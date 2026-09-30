@@ -1,0 +1,11 @@
+{
+  "name": "consumer",
+  "version": "1.0.0",
+  "private": true,
+  "devDependencies": {
+    "ms": "workspace:*"
+  },
+  "peerDependencies": {
+    "ms": ">=2.1.3"
+  }
+}

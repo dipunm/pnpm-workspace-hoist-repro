@@ -1,0 +1,8 @@
+{
+  "name": "registry-user",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "ms": "file:../../registry/ms.tgz"
+  }
+}
