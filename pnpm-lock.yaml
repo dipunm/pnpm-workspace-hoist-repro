@@ -18,16 +18,25 @@ importers:
 
   packages/registry-user:
     dependencies:
-      ms:
-        specifier: file:../../registry/ms.tgz
-        version: file:registry/ms.tgz
+      peer-user:
+        specifier: file:../../registry/peer-user-1.0.0.tgz
+        version: file:registry/peer-user-1.0.0.tgz(ms@2.1.3)
 
 packages:
 
-  ms@file:registry/ms.tgz:
-    resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==, tarball: file:registry/ms.tgz}
-    version: 2.1.3
+  ms@2.1.3:
+    resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
+
+  peer-user@file:registry/peer-user-1.0.0.tgz:
+    resolution: {integrity: sha512-h01lpNOlgchzYBhOv+Q8RJlxhEd/uy2iG3r4BsOg88vXvNf+h8Q0VZfeNWqHciBM26dzbPgwlsxyhQc8IVB8bQ==, tarball: file:registry/peer-user-1.0.0.tgz}
+    version: 1.0.0
+    peerDependencies:
+      ms: 2.1.3
 
 snapshots:
 
-  ms@file:registry/ms.tgz: {}
+  ms@2.1.3: {}
+
+  peer-user@file:registry/peer-user-1.0.0.tgz(ms@2.1.3):
+    dependencies:
+      ms: 2.1.3

@@ -1,8 +1,8 @@
-# pnpm `dedupe` hoisting reproduction
+# pnpm `dedupe` removes a hoisted package installed for a peer dependency
 
-This standalone workspace reproduces a missing hoisted package link after upgrading from pnpm 11.27.1 to 11.28.2. It uses only a local workspace package and the public [`ms@2.1.3`](https://www.npmjs.com/package/ms/v/2.1.3) tarball downloaded from `https://registry.npmjs.org/ms/-/ms-2.1.3.tgz`. No private registry or service is needed.
+This standalone workspace reproduces a missing hoisted package link with pnpm 11.28.5. It uses a workspace package named `ms`, a package that depends on it through `workspace:*`, and a packaged peer consumer that causes pnpm to install the public [`ms@2.1.3`](https://www.npmjs.com/package/ms/v/2.1.3) separately. No private registry or service is needed.
 
-This was extracted from the lint failure in [opentable/otjs-libraries#2822](https://github.com/opentable/otjs-libraries/pull/2822). There, `otjs-metrics` links to the local `otjs-logger` workspace package, while another dependency resolves a published `otjs-logger` copy. `eslint-plugin-jest` checks mocked module paths with `require.resolve()` from its own location inside pnpm's virtual store. The missing hoisted link makes that check report `otjs-logger` as missing even though the workspace link exists. This fixture substitutes a public tarball for the published logger copy; it reproduces the resolution behavior without reproducing the private dependency chain.
+This models the lint failure in [opentable/otjs-libraries#2822](https://github.com/opentable/otjs-libraries/pull/2822). `otjs-server-logging` links to the local `otjs-logger` workspace package; `ot-discovery` has a peer dependency that resolves to a published `otjs-logger` copy. `eslint-plugin-jest` checks mocked module paths with `require.resolve()` from its own location inside pnpm's virtual store. When the hoisted link disappears, it reports the logger as missing even though the consuming package's workspace link exists.
 
 ## Run
 
@@ -10,17 +10,17 @@ This was extracted from the lint failure in [opentable/otjs-libraries#2822](http
 ./reproduce.sh
 ```
 
-The script creates an isolated directory under the system temporary directory and prints its path at the end. It verifies that code running from pnpm's virtual store can resolve `ms` after pnpm 11.27.1 `dedupe`, then upgrades only `packageManager` to 11.28.2, runs a frozen install and `dedupe`, and checks resolution again. The expected final output includes `MODULE_NOT_FOUND`; the script exits successfully only when the failure is reproduced.
+The script makes two separate temporary workspaces from the same lockfile, matching CI's fresh checkout. It installs and dedupes one with pnpm 11.27.1. It then installs the other with pnpm 11.28.5, verifies virtual-store resolution before `dedupe`, and checks it again afterward. The expected final output includes `MODULE_NOT_FOUND`; the script exits successfully only when the failure is reproduced.
 
-The root `package.json` remains pinned to 11.27.1 so the script can be rerun. A launcher that honors the `packageManager` field must have access to both pnpm versions.
-
-The script uses `--offline`. The `ms` tarball is included, but the pnpm versions must already be available locally. If needed, run `pnpm --version` once with each `packageManager` version to let your launcher fetch them before running the script.
+The root `package.json` stays pinned to 11.27.1 so the script can be rerun. Your pnpm launcher must support the `packageManager` field and be able to run both versions. The first run needs network access to fetch the public `ms` package from npm.
 
 ## Why this shape matters
 
-`packages/ms` is a workspace project named `ms`. `packages/consumer` uses that workspace project. `packages/registry-user` uses the published `ms@2.1.3` tarball through a `file:` dependency. `scripts/check-resolution.cjs` resolves `ms` from a path inside pnpm's virtual store, as an installed tool such as an ESLint plugin would.
+`packages/ms` is the workspace copy. `packages/consumer` depends on that copy through `workspace:*`. `registry/peer-user` declares a peer dependency on `ms@2.1.3`; its included tarball is a dependency of `packages/registry-user`. pnpm therefore resolves the second `ms` copy from npm as a **peer**, recorded under `peer-user` in `pnpm-lock.yaml`, rather than as a direct dependency of a workspace importer. `scripts/check-resolution.cjs` resolves `ms` from pnpm's virtual store, like the installed ESLint plugin.
 
-After pnpm 11.27.1 `dedupe`, `node_modules/.pnpm/node_modules/ms` points to the tarball copy. After the 11.28.2 frozen install it points to the workspace copy. After 11.28.2 `dedupe`, the link is gone and the resolution check fails, while the lockfile remains valid.
+After pnpm 11.27.1 `dedupe`, virtual-store resolution succeeds. With a fresh pnpm 11.28.5 install, it succeeds before `dedupe`; afterward, `node_modules/.pnpm/node_modules/ms` is gone and resolution fails. The direct `packages/consumer/node_modules/ms` workspace link remains present.
+
+The earlier version of this fixture used a direct `file:` dependency on the published package. That case was fixed by [pnpm/pnpm#16491](https://github.com/pnpm/pnpm/pull/16491) and passes with pnpm 11.28.5. This version exercises the peer dependency case that remains in `otjs-libraries`.
 
 ## Workspace-only control
 
@@ -28,4 +28,4 @@ After pnpm 11.27.1 `dedupe`, `node_modules/.pnpm/node_modules/ms` points to the 
 ./scripts/reproduce-workspace-only.sh
 ```
 
-This variant contains only `packages/ms` and `packages/consumer`. The consumer's `workspace:*` dependency links directly to `packages/ms` in both pnpm versions. It does **not** reproduce the regression: code running from the virtual store cannot resolve `ms` after 11.27.1 `dedupe`, but can resolve it after 11.28.2 `dedupe`. The main reproduction requires the second copy of `ms` supplied through the public tarball `file:` dependency.
+This variant contains only `packages/ms` and `packages/consumer`. The consumer's `workspace:*` dependency links directly to `packages/ms` in both pnpm versions. It does **not** reproduce the regression: code running from the virtual store cannot resolve `ms` after 11.27.1 `dedupe`, but can resolve it after 11.28.5 `dedupe`. The main reproduction needs the separately resolved published copy introduced by the peer dependency.

@@ -3,6 +3,6 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "ms": "file:../../registry/ms.tgz"
+    "peer-user": "file:../../registry/peer-user-1.0.0.tgz"
   }
 }
